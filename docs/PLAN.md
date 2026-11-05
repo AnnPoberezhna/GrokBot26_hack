@@ -125,3 +125,6 @@ One commit per row, in this order.
 | [ ] | Mesh Bot | A shared bot that answers "who works on what" and runs a collision digest routine. | Stretch |
 | [ ] | Dashboard | Web view of active leases and collisions, with live updates. | Stretch |
 | [ ] | Tree-sitter | Replace `ast`, so the parser accepts code that does not compile. | Stretch |
+
+MCP progress: the HTTP server and four tools are implemented and tested locally.
+The public tunnel and live Grok Bot connection are still pending.

@@ -1,0 +1,116 @@
+"""Exercise the real MCP HTTP transport and tool serialization in process."""
+
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+import httpx
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
+
+from grokmesh.intents import close_intent
+from grokmesh.server import create_server
+from grokmesh.store import Lease, Store
+
+
+@asynccontextmanager
+async def client(store: Store) -> AsyncIterator[ClientSession]:
+    server = create_server(store)
+    app = server.streamable_http_app()
+
+    async with (
+        server.session_manager.run(),
+        httpx.AsyncClient(transport=httpx.ASGITransport(app=app)) as http_client,
+        streamable_http_client("http://localhost:8000/mcp", http_client=http_client) as streams,
+    ):
+        read, write, _ = streams
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            yield session
+
+
+def test_two_developers_over_http() -> None:
+    async def scenario() -> None:
+        with Store() as store:
+            async with client(store) as session:
+                listed = await session.list_tools()
+                assert {t.name for t in listed.tools} == {
+                    "declare_intent",
+                    "sync_file",
+                    "check_collision",
+                    "get_contracts",
+                }
+                first = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "anna",
+                        "goal": "Build auth",
+                        "produces": ["auth.issue"],
+                    },
+                )
+                assert not first.isError
+                assert first.structuredContent is not None
+                assert first.structuredContent["blocked"] is False
+                intent_id = first.structuredContent["intent"]["intent_id"]
+                second = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "marcel",
+                        "goal": "Also auth",
+                        "modifies": ["auth.issue"],
+                    },
+                )
+                assert second.structuredContent is not None
+                assert second.structuredContent["blocked"] is True
+                assert second.structuredContent["collisions"][0]["other_dev"] == "anna"
+                assert len(store.active_intents()) == 1
+                upload = {
+                    "dev_id": "anna",
+                    "path": "auth.py",
+                    "module": "auth",
+                    "source": "def issue(token: str) -> str:\n    return token\n",
+                    "intent_id": intent_id,
+                }
+                synced = await session.call_tool("sync_file", upload)
+                assert not synced.isError
+                contracts = await session.call_tool("get_contracts", {"symbol_ids": ["auth.issue"]})
+                assert contracts.structuredContent is not None
+                contract = contracts.structuredContent["contracts"][0]
+                assert contract["signature"] == "def issue(token: str) -> str"
+                assert contract["owner"] == "anna" and contract["active"]
+                conflict = await session.call_tool(
+                    "sync_file",
+                    {
+                        **upload,
+                        "dev_id": "marcel",
+                        "intent_id": None,
+                    },
+                )
+                assert conflict.structuredContent is not None
+                assert conflict.structuredContent["blocked"] is True
+                assert store.symbols_in_layer("wip:marcel") == []
+                invalid = await session.call_tool("sync_file", {**upload, "source": "def issue(:"})
+                assert invalid.isError
+                assert store.get_symbol("auth.issue", "wip:anna") is not None
+                own = await session.call_tool(
+                    "check_collision",
+                    {
+                        "dev_id": "anna",
+                        "symbol_ids": ["auth.issue"],
+                    },
+                )
+                assert own.structuredContent is not None and not own.structuredContent["blocked"]
+                close_intent(store, "anna", intent_id)
+                store.touch_lease(Lease("auth.issue", "anna", heartbeat=0, ttl_s=1))
+                expired = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "marcel",
+                        "goal": "Build auth",
+                        "produces": ["auth.issue"],
+                    },
+                )
+                assert expired.structuredContent is not None
+                assert expired.structuredContent["blocked"] is False
+
+    asyncio.run(scenario())

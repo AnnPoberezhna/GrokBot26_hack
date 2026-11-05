@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Live shared code graph that syncs the coding agents of a whole team before code collides."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "mcp>=1.30,<2",
+]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
