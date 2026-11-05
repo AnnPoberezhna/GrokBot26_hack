@@ -48,8 +48,8 @@ Bot instructions: declare intent before editing, stop when `blocked` is true,
 check collisions before further edits, and sync changed source after each edit.
 Only `produces` and `modifies` claim symbols; `consumes` and path globs are stored
 as intent context. Leases expire unless renewed; active intents continue to reserve
-their targets until closed. The parser resolves calls across files through imports.
-Signature compatibility (broken-contract detection) is the next feature.
+their targets until closed. Imported calls are resolved on a best-effort basis;
+dynamic dispatch and name shadowing remain limitations.
 
 ### Public tunnel for a shared demo
 
@@ -66,3 +66,22 @@ assumes trusted demo participants: developer IDs are caller-supplied and there i
 no authentication. Host validation remains enabled for the tunnel hostname.
 
 Run checks with `uv run pytest`, `uv run ruff check src tests`, and `uv run mypy`.
+
+
+### Broken contracts
+
+File sync classifies signature changes against the base: added, unchanged,
+compatible, or breaking. Optional parameters can be added safely; removed or
+renamed parameters, new required parameters, lost variadic arguments, and
+sync/async changes are breaking. Annotation and class-header changes are
+conservatively breaking; type subtyping and runtime behavior are not analyzed.
+Changing an existing default value remains compatible by call shape.
+
+A breaking symbol with a call edge from another developer's leased WIP symbol
+produces a report naming the caller, owner, and before/after signatures.
+`check_collision` and intent declaration block affected caller edits. After an
+upload, `sync_file` publishes the source and returns impact warnings, allowing
+the latest graph to remain visible and callers to upload their fixes. Expired
+leases, unchanged base callers, and calls within one developer's work do not
+produce these conflicts. Call-shape compatibility is conservative: inspect the
+reported contract before deciding whether to update or escalate.

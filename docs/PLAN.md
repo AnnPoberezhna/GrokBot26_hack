@@ -119,7 +119,7 @@ One commit per row, in this order.
 | [x] | Same-symbol collision | Stage 1: an intent or a sync against another developer's active lease. | MVP |
 | [ ] | MCP server | FastMCP over HTTP with `declare_intent`, `sync_file`, `check_collision`, `get_contracts`. Tunnel to a public URL. | MVP |
 | [ ] | Grok Bot setup | Two developer bots connected to the MCP server, with instructions to check before they code. | MVP |
-| [ ] | Broken contract | Stage 2: a breaking signature change plus a `calls` edge into another developer's uncommitted code. | MVP |
+| [x] | Broken contract | Stage 2: a breaking signature change plus a `calls` edge into another developer's uncommitted code. | MVP |
 | [ ] | Duplication | Stage 3: BM25 + cosine search of a new intent against other developers' symbols and intents. | Stretch |
 | [ ] | Judge | Stage 4: Grok confirms collision candidates and drops false positives. | Stretch |
 | [ ] | Mesh Bot | A shared bot that answers "who works on what" and runs a collision digest routine. | Stretch |

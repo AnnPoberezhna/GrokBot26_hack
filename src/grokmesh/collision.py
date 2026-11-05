@@ -39,6 +39,7 @@ class Collision:
     sig_after: str | None = None
     age_s: float | None = None
     resolutions: tuple[Resolution, ...] = field(default=())
+    caller_symbol_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-ready dict for MCP tool responses."""

@@ -6,8 +6,9 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from grokmesh.broken_contract import classify_change
 from grokmesh.parser import ParseResult, module_for_path, parse_file
-from grokmesh.store import BASE_LAYER, DEFAULT_LEASE_TTL_S, ChangeKind, Lease, Store, overlay_layer
+from grokmesh.store import BASE_LAYER, DEFAULT_LEASE_TTL_S, Lease, Store, overlay_layer
 
 
 def sync_file(
@@ -24,8 +25,7 @@ def sync_file(
     """Replace a file overlay and renew leases for symbols differing from base.
 
     Deleted base symbols are leased too, with no after-signature, and count as
-    breaking. Signature compatibility classification of edited symbols is
-    deferred to the broken-contract feature.
+    breaking. Edited signatures are conservatively classified for caller checks.
     """
     if ttl_s <= 0:
         raise ValueError("ttl_s must be positive")
@@ -63,18 +63,13 @@ def sync_file(
                     intent_id=intent_id,
                     sig_before=before.signature if before else None,
                     sig_after=after.signature if after else None,
-                    change_kind=_change_kind(before is not None, after is not None),
+                    change_kind=classify_change(
+                        before.signature if before else None,
+                        after.signature if after else None,
+                    ),
                 )
             )
     return parsed
-
-
-def _change_kind(in_base: bool, in_overlay: bool) -> ChangeKind:
-    if not in_base:
-        return ChangeKind.ADDED
-    if not in_overlay:
-        return ChangeKind.BREAKING
-    return ChangeKind.NONE
 
 
 _SKIP_DIRS = frozenset(

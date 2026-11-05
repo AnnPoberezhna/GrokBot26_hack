@@ -163,3 +163,76 @@ def test_claim_is_not_a_deletion_and_base_keeps_unrelated_edits_free() -> None:
                 }
 
     asyncio.run(scenario())
+
+
+def test_broken_contract_over_http() -> None:
+    from grokmesh.parser import parse_file
+
+    async def scenario() -> None:
+        with Store() as store:
+            base = parse_file("def issue(token):\n    return token\n", "auth.py", "auth", "base")
+            store.replace_file("base", "auth.py", base.symbols, base.edges)
+            async with client(store) as session:
+                caller = await session.call_tool(
+                    "sync_file",
+                    {
+                        "dev_id": "marcel",
+                        "path": "api.py",
+                        "module": "api",
+                        "source": "from auth import issue\ndef login():\n    return issue('a')\n",
+                    },
+                )
+                assert not caller.isError
+                provider = await session.call_tool(
+                    "sync_file",
+                    {
+                        "dev_id": "anna",
+                        "path": "auth.py",
+                        "module": "auth",
+                        "source": "def issue(token, salt):\n    return token\n",
+                    },
+                )
+                assert provider.structuredContent is not None
+                assert provider.structuredContent["blocked"] is False
+                impact = provider.structuredContent["collisions"][0]
+                assert impact["caller_symbol_id"] == "api.login"
+                assert impact["severity"] == "warn"
+                checked = await session.call_tool(
+                    "check_collision",
+                    {
+                        "dev_id": "marcel",
+                        "symbol_ids": ["api.login"],
+                    },
+                )
+                assert checked.structuredContent is not None
+                assert checked.structuredContent["blocked"] is True
+                assert checked.structuredContent["collisions"][0]["kind"] == "broken_contract"
+                declared = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "marcel",
+                        "goal": "Edit login",
+                        "modifies": ["api.login"],
+                    },
+                )
+                assert declared.structuredContent is not None
+                assert declared.structuredContent["blocked"] is True
+                # The provider can redeclare work without losing its breaking classification.
+                await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "anna",
+                        "goal": "Finish auth",
+                        "modifies": ["auth.issue"],
+                    },
+                )
+                again = await session.call_tool(
+                    "check_collision",
+                    {
+                        "dev_id": "marcel",
+                        "symbol_ids": ["api.login"],
+                    },
+                )
+                assert again.structuredContent is not None and again.structuredContent["blocked"]
+
+    asyncio.run(scenario())

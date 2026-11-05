@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
+from grokmesh.broken_contract import check_contracts
 from grokmesh.collision import Collision, Severity
 from grokmesh.intents import declare_intent as save_intent
 from grokmesh.leases import sync_file as save_file
@@ -75,7 +76,9 @@ def create_server(
     @server.tool()
     def check_collision(dev_id: str, symbol_ids: list[str]) -> dict[str, Any]:
         """Check target symbols against other developers' active leases."""
-        collisions = find_collisions(store, dev_id, symbol_ids)
+        with store.transaction():
+            collisions = find_collisions(store, dev_id, symbol_ids)
+            collisions += check_contracts(store, dev_id, symbol_ids)
         return {
             "blocked": any(c.severity is Severity.BLOCK for c in collisions),
             "collisions": [c.to_dict() for c in collisions],
@@ -98,6 +101,9 @@ def create_server(
             ts = time.time()
             targets = {s.strip() for s in (produces or []) + (modifies or []) if s.strip()}
             collisions = find_collisions(store, dev_id, targets, now=ts)
+            if any(c.severity is Severity.BLOCK for c in collisions):
+                return {"blocked": True, "collisions": [c.to_dict() for c in collisions]}
+            collisions += check_contracts(store, dev_id, targets, now=ts)
             if any(c.severity is Severity.BLOCK for c in collisions):
                 return {"blocked": True, "collisions": [c.to_dict() for c in collisions]}
             intent = save_intent(
@@ -188,6 +194,9 @@ def create_server(
                 ttl_s=ttl_s,
                 now=ts,
             )
+            impacts = check_contracts(store, dev_id, now=ts)
+            # The edit is already uploaded: report impacts without rejecting its publication.
+            collisions += [replace(c, severity=Severity.WARN) for c in impacts]
             return {
                 "blocked": False,
                 "symbols": [s.symbol_id for s in saved.symbols],
