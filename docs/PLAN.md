@@ -112,7 +112,7 @@ One commit per row, in this order.
 | | Feature | What the commit adds | Scope |
 | --- | --- | --- | --- |
 | [x] | Starting plan | This document. | — |
-| [ ] | Store | SQLite schema: symbols per layer, edges, intents, leases. | MVP |
+| [x] | Store | SQLite schema: symbols per layer, edges, intents, leases. | MVP |
 | [ ] | Parser | `ast` extracts symbols, signatures and `calls` edges from one Python file. | MVP |
 | [ ] | Leases | `sync_file` parses a file, writes the developer's overlay and renews leases with a TTL. | MVP |
 | [ ] | Intents | `declare_intent` stores a structured intent: `goal`, `produces`, `consumes`, `modifies`, `scope`. | MVP |
