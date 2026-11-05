@@ -1,0 +1,146 @@
+[
+ {
+  "text": "GrokMesh: one live code graph for every coding agent on the team",
+  "tone": "title"
+ },
+ {
+  "text": "base layer: demo/auth.py, demo/api.py (api.login calls auth.issue)",
+  "tone": "dim"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "[1] Anna's bot declares its intent before it writes code",
+  "tone": "step"
+ },
+ {
+  "text": "  anna     declare_intent(modifies=['demo.auth.issue'], goal='Add token expiry')",
+  "tone": "call"
+ },
+ {
+  "text": "  granted: lease on demo.auth.issue for 30 min",
+  "tone": "ok"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "[2] Marcel's bot wants the same function",
+  "tone": "step"
+ },
+ {
+  "text": "  marcel   declare_intent(modifies=['demo.auth.issue'], goal='Rewrite signing')",
+  "tone": "call"
+ },
+ {
+  "text": "  BLOCKED before a single line of duplicate code",
+  "tone": "block"
+ },
+ {
+  "text": "  CONFLICT: demo.auth.issue is active (anna, 0 s ago).",
+  "tone": "block"
+ },
+ {
+  "text": "  Intent: \"Add token expiry\".",
+  "tone": "block"
+ },
+ {
+  "text": "  resolutions: reuse, code_against_stub, negotiate",
+  "tone": "dim"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "[3] Anna changes the contract of issue()",
+  "tone": "step"
+ },
+ {
+  "text": "  anna     sync_file('demo/auth.py')  ->  issue(user_id, ttl_s)",
+  "tone": "call"
+ },
+ {
+  "text": "  overlay published; signature change classified as BREAKING",
+  "tone": "ok"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "[4] Marcel's bot plans to edit login(), which calls issue()",
+  "tone": "step"
+ },
+ {
+  "text": "  marcel   declare_intent(modifies=['demo.api.login'], goal='Add audit log')",
+  "tone": "call"
+ },
+ {
+  "text": "  BLOCKED: broken contract found before merge, not after",
+  "tone": "block"
+ },
+ {
+  "text": "  CONFLICT: demo.api.login (marcel) calls demo.auth.issue (anna), whose contract changed.",
+  "tone": "block"
+ },
+ {
+  "text": "  Change: def issue(user_id: str) -> str -> def issue(user_id: str, ttl_s: int) -> str",
+  "tone": "block"
+ },
+ {
+  "text": "  resolutions: code_against_stub, escalate",
+  "tone": "dim"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "[5] Marcel's bot pulls the new contract and codes against it",
+  "tone": "step"
+ },
+ {
+  "text": "  marcel   get_contracts(['demo.auth.issue'])",
+  "tone": "call"
+ },
+ {
+  "text": "  def issue(user_id: str) -> str                main",
+  "tone": "ok"
+ },
+ {
+  "text": "  def issue(user_id: str, ttl_s: int) -> str    anna",
+  "tone": "ok"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "[6] Mesh Bot: who works on what",
+  "tone": "step"
+ },
+ {
+  "text": "  mesh     get_activity()",
+  "tone": "call"
+ },
+ {
+  "text": "  anna     Add token expiry",
+  "tone": "plain"
+ },
+ {
+  "text": "           demo.auth.issue (breaking)",
+  "tone": "dim"
+ },
+ {
+  "text": "",
+  "tone": "plain"
+ },
+ {
+  "text": "Collisions caught at intent time: same symbol, broken contract.",
+  "tone": "ok"
+ }
+]
