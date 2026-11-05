@@ -1,11 +1,32 @@
-# GrokBot26_hack
+# GrokMesh
 
-**GrokMesh:** a live shared code graph that syncs the coding agents of a whole team before code collides.
+**A live shared code graph that syncs the coding agents of a whole team before their code collides.**
+Built at the Grok Bot Hackathon Wrocław, 5 November 2026.
 
-Source idea and architecture: [docs/IDEA.md](docs/IDEA.md)
+## Pitch film
 
-Pitch film (55 s, no sound): [docs/grokmesh-pitch.mp4](docs/grokmesh-pitch.mp4).
-Kanzen version (76 s, dark, explains the mechanism): [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4). Source: [pitch/](pitch/) (Remotion, `cd pitch && pnpm render`).
+▶ **[docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4)** (72 s, 1080p, no sound).
+Source: [pitch/src/kanzen/](pitch/src/kanzen/), made with Remotion in the Kanzen design system
+(`cd pitch && pnpm install && pnpm exec remotion render src/index.ts GrokMeshKanzen out/film.mp4`).
+
+## Summary
+
+- **Problem.** Every developer runs a coding agent, and every agent works alone. Two agents can
+  finish separate tasks, pass their own tests, and still break each other: the frontend calls
+  `login(user_id)` while the backend changed it to `login(user_id, password)`. Git finds this at merge.
+- **Idea.** Move the check from the pull request to the moment an agent forms its intent.
+- **How.** Each Grok Bot talks to one GrokMesh broker over MCP. The broker keeps a code graph:
+  the `main` branch as a base layer, one overlay per developer with uncommitted symbols, and leases
+  on the symbols each bot is changing. It stores signatures, hashes and call edges, not source.
+- **Checks.** (1) Same symbol: two active claims on one function → block.
+  (2) Broken contract: a breaking signature change plus a `calls` edge into another developer's
+  work → block. (3) Duplication: BM25 match against other intents → warn.
+- **Result.** A bot calls `get_contracts` before it calls a teammate's function, sees the
+  in-progress signature, and adapts its code before either one commits.
+- **Stack.** Python, SQLite, FastMCP over Streamable HTTP, 7 MCP tools, 76 tests.
+
+More: [docs/IDEA.md](docs/IDEA.md) (design), [docs/PLAN.md](docs/PLAN.md) (build plan),
+[docs/grokmesh-pitch.mp4](docs/grokmesh-pitch.mp4) (first film draft).
 
 ## Run the MCP broker
 
