@@ -1,198 +1,184 @@
 # GrokMesh
 
-**A live shared code graph that syncs the coding agents of a whole team before their code collides.**
-Built at the Grok Bot Hackathon Wrocław, 5 November 2026.
+**GrokMesh lets the coding agents of a whole team see each other's work in progress.
+It finds collisions when an agent declares its intent, not at the pull request.**
 
-## Pitch film
+Built at the Grok Bot Hackathon Wrocław on 5 November 2026, 18:00–21:10.
 
-▶ **[docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4)** (72 s, 1080p, no sound).
-Source: [pitch/src/kanzen/](pitch/src/kanzen/), made with Remotion in the Kanzen design system
-(`cd pitch && pnpm install && pnpm exec remotion render src/index.ts GrokMeshKanzen out/film.mp4`).
+▶ **Pitch film:** [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4) (72 s, no sound).
 
 ## Summary
 
-- **Problem.** Every developer runs a coding agent, and every agent works alone. Two agents can
-  finish separate tasks, pass their own tests, and still break each other: the frontend calls
-  `login(user_id)` while the backend changed it to `login(user_id, password)`. Git finds this at merge.
-- **Idea.** Move the check from the pull request to the moment an agent forms its intent.
-- **How.** Each Grok Bot talks to one GrokMesh broker over MCP. The broker keeps a code graph:
-  the `main` branch as a base layer, one overlay per developer with uncommitted symbols, and leases
-  on the symbols each bot is changing. It stores signatures, hashes and call edges, not source.
-- **Checks.** (1) Same symbol: two active claims on one function → block.
-  (2) Broken contract: a breaking signature change plus a `calls` edge into another developer's
-  work → block. (3) Duplication: BM25 match against other intents → warn.
-- **Result.** A bot calls `get_contracts` before it calls a teammate's function, sees the
-  in-progress signature, and adapts its code before either one commits.
-- **Stack.** Python, SQLite, FastMCP over Streamable HTTP, 7 MCP tools, 76 tests.
+| | |
+| --- | --- |
+| **Problem** | Each developer runs a coding agent. Each agent works alone. Two agents can finish separate tasks, pass their own tests, and still break each other. |
+| **Example** | The frontend bot calls `login(user_id)`. The backend bot changes it to `login(user_id, password)`. Git finds the mismatch at merge. |
+| **Idea** | GrokMesh moves the check from the pull request to the moment an agent declares its intent. |
+| **How** | Each Grok Bot connects to one GrokMesh broker over MCP. The broker keeps a live code graph of all uncommitted work. |
+| **Result** | Before a bot calls a teammate's function, it reads the current contract, including the teammate's uncommitted change. The bot adapts its code before either developer commits. |
+| **Stack** | Python 3.12, SQLite, FastMCP over Streamable HTTP. 7 MCP tools, 76 tests. |
 
-More: [docs/IDEA.md](docs/IDEA.md) (design), [docs/PLAN.md](docs/PLAN.md) (build plan),
-[docs/grokmesh-pitch.mp4](docs/grokmesh-pitch.mp4) (first film draft).
+## How it works
+
+1. **Declare.** A bot calls `declare_intent` with the symbols it will produce or modify.
+2. **Sync.** After each edit, the bot sends the changed file with `sync_file`.
+3. **Index.** The broker parses the file. It stores symbols, signatures, body hashes and call edges. It does not store source code.
+4. **Layer.** The `main` branch is the base layer. Each developer has an overlay with uncommitted symbols.
+5. **Lease.** Each changed symbol gets a lease for its developer. A lease expires after 30 minutes without a sync.
+6. **Check.** The broker runs the checks below. A declaration runs all three stages. A sync runs stages 1 and 2.
+
+| Stage | Collision | Rule | Effect |
+| --- | --- | --- | --- |
+| 1 | Same symbol | Another developer holds an active lease or intent on the symbol. | Block |
+| 2 | Broken contract | A symbol has a breaking signature change, and a `calls` edge leads to another developer's work. | Block |
+| 3 | Duplication | BM25 text search finds a similar intent or symbol of another developer. | Warn |
+
+Each report names the other developer and the possible resolutions. A contract report also shows the before and after signatures.
+
+## Present the project
+
+The jury limit is 90 seconds. Use one of these three formats.
+
+| Format | Command | Use when |
+| --- | --- | --- |
+| **Film** | Play [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4) | You want a fixed, offline 72-second pitch. |
+| **Two-terminal live demo** | See [Live demo](#live-demo-two-agents-two-terminals) | You want to show real MCP traffic between two agents. |
+| **Dashboard** | Start the broker, open `http://127.0.0.1:8000/` | You want a visual graph of leases and collisions. |
+
+Suggested live pitch:
+
+1. **0:00–0:20.** State the problem with the frontend and backend example.
+2. **0:20–1:10.** Run the two-terminal demo, steps 1 to 5.
+3. **1:10–1:30.** Close: "Sync at intent, not at the pull request."
 
 ## Live demo: two agents, two terminals
 
-Each script is a real MCP client that talks to the broker over HTTP, like a Grok Bot.
-The two developers can sit on different git branches: the broker sees uncommitted work, not branches.
+Each script is a real MCP client. It talks to the broker over HTTP, like a Grok Bot.
+The two developers can work on different git branches. The broker sees uncommitted work, not branches.
 
 ```sh
-rm -f demo.db*   # fresh state: overlays from an earlier run would block step 1
-uv run python -m grokmesh.server --db demo.db --base-root .   # broker
-uv run python demo/demo_1.py    # terminal 1: tim, backend, changes login(user_id) -> login(user_id, password)
-uv run python demo/demo_2.py    # terminal 2: anna, frontend client, sees the change and adapts
+rm -f demo.db*                                               # start from a clean state
+uv run python -m grokmesh.server --db demo.db --base-root .  # terminal 0: broker
+uv run python demo/demo_1.py                                 # terminal 1: Tim, backend
+uv run python demo/demo_2.py                                 # terminal 2: Anna, frontend
 ```
 
-Press Enter to advance. Run `demo_1.py` steps 1–2 first. Set `GROKMESH_URL` for a tunnel URL.
-`demo/run_demo.py` is the single-terminal scripted version.
+Press Enter to go to the next step. Run steps 1 and 2 of `demo_1.py` before you start `demo_2.py`.
 
-## Run the MCP broker
+| Step | Terminal | What happens |
+| --- | --- | --- |
+| 1 | Tim | Declares an intent on `demo.api.login`. Gets a lease. |
+| 2 | Tim | Syncs `login(user_id, password)`. The broker classifies the change as breaking. |
+| 1 | Anna | Declares a separate task: a login client. Not blocked. |
+| 2 | Anna | Syncs a client that calls `login(user_id)`. Gets a broken-contract report that names Tim. |
+| 3 | Anna | Calls `get_contracts`. Sees the `main` signature and Tim's uncommitted signature. |
+| 4 | Anna | Adapts the client to `login(user_id, password)` and syncs again. |
+| 5 | Anna | Tries to modify `demo.api.login`. Gets **BLOCKED**: Tim holds the lease. |
 
-Requires Python 3.12+ and `uv`:
+Notes:
+
+- Use a new database for each run. An overlay from an earlier run blocks Anna's step 1.
+- After step 4, the broker still reports the dependency while Tim's change is open. GrokMesh does not check call arguments.
+- To use a public tunnel, set `GROKMESH_URL=https://<host>.trycloudflare.com/mcp`.
+- `uv run python demo/run_demo.py` runs a scripted version in one terminal, with no network.
+
+## Run the broker
 
 ```sh
 uv sync
 uv run python -m grokmesh.server --db mesh.db --base-root path/to/main/checkout
 ```
 
-`--base-root` rebuilds the base layer from a checkout of the main branch at startup.
-Always set it for a demo: without a base layer, every symbol in a synced file counts
-as changed, so two developers who edit different functions of one file collide.
+- **MCP endpoint:** `http://127.0.0.1:8000/mcp` (Streamable HTTP).
+- **Dashboard:** `http://127.0.0.1:8000/`.
+- **`--base-root`:** builds the base layer from a checkout of `main` at startup. Always set it. Without a base layer, every symbol in a synced file counts as changed.
+- **`--host`, `--port`:** change the listen address. The defaults are `127.0.0.1` and `8000`.
+- **State:** the SQLite file keeps team state across restarts.
 
-Connect an MCP client using Streamable HTTP at `http://127.0.0.1:8000/mcp`.
-The SQLite file persists team state across restarts. The server closes its database
-on shutdown. Host and port can be set with `--host` and `--port`.
+### Connect a Grok Bot through a public tunnel
+
+Grok Bot cannot reach `127.0.0.1`. Expose the broker with a tunnel:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:8000
+uv run python -m grokmesh.server --db mesh.db --base-root . --public-host <host>.trycloudflare.com
+```
+
+Then ask the bot: "Add a custom MCP server named GrokMesh at `https://<host>.trycloudflare.com/mcp` using Streamable HTTP."
+
+The broker has no authentication. Each client sends its own `dev_id`. Use it only with trusted participants.
+
+## MCP tools
 
 | Tool | Inputs | Result |
 | --- | --- | --- |
-| `declare_intent` | `dev_id`, `goal`; optional `produces`, `consumes`, `modifies`, `scope` lists | An intent ID and 30-minute leases on produced/modified symbols, or `blocked: true` with competing leases. |
-| `sync_file` | `dev_id`, `path`, `source`; optional `module`, `intent_id`, `ttl_s` | Published symbol IDs and renewed leases, or a blocked result. |
-| `check_collision` | `dev_id`, `symbol_ids` | Competing leases or active intents and a `blocked` flag. |
-| `get_contracts` | `symbol_ids` | Signatures across base and overlays, including owners and active lease state. |
-| `close_intent` | `dev_id`, `intent_id`; optional `status` (`done` or `abandoned`) | Close your intent and release its leases. |
-| `get_activity` | Optional `dev_id` | Active goals, scopes and leased symbols grouped by developer. |
-| `get_collision_digest` | Optional `dev_id` | Current collisions grouped by affected developer. |
+| `declare_intent` | `dev_id`, `goal`; optional `produces`, `consumes`, `modifies`, `scope` | An intent ID and 30-minute leases, or `blocked: true` with the collisions. A blocked call writes nothing. |
+| `sync_file` | `dev_id`, `path`, `source`; optional `module`, `intent_id`, `ttl_s` | The published symbols and impact warnings, or `blocked: true`. |
+| `check_collision` | `dev_id`, `symbol_ids` | The collisions for these symbols and a `blocked` flag. |
+| `get_contracts` | `symbol_ids` | The signatures in the base layer and in every overlay, with owner and lease state. |
+| `close_intent` | `dev_id`, `intent_id`; optional `status` (`done`, `abandoned`) | Closes the intent and releases its leases. |
+| `get_activity` | optional `dev_id` | Active goals, scopes and leased symbols for each developer. |
+| `get_collision_digest` | optional `dev_id` | Current collisions for each developer, blocking reports first. |
 
-`module` is the qualified Python module name, such as `pkg.auth`. It defaults to the
-name derived from `path` (`src/pkg/auth.py` -> `pkg.auth`). `path` labels a
-repository file; source must be uploaded explicitly. The server never opens that
-path. Invalid Python and invalid inputs return MCP tool errors without changing
-the file overlay. Collision checks and writes execute in the same database
-transaction, so competing declarations cannot both claim the same symbol.
+Rules for a bot:
 
-### Two-agent demo
+1. Call `declare_intent` before you edit code.
+2. Stop if a result has `blocked: true`. Show the message to your developer.
+3. Call `get_contracts` before you call another developer's function.
+4. Call `sync_file` with the full file after each edit.
+5. Call `close_intent` when the task is done or abandoned.
 
-1. Anna declares an intent with `produces: ["auth.issue"]`.
-2. Marcel declares an intent with `modifies: ["auth.issue"]`. The result is blocked
-   and identifies Anna's lease; Marcel's intent is not stored.
-3. Anna uploads `auth.py`, module `auth`, with source defining `issue`, and passes
-   her returned `intent_id` to `sync_file`.
-4. Either agent requests `get_contracts` for `auth.issue` to see Anna's signature.
+Details:
 
-Bot instructions: declare intent before editing, stop when `blocked` is true,
-check collisions before further edits, and sync changed source after each edit.
-Call `close_intent` when finished or abandoning work, so teammates can claim the symbols.
-Only `produces` and `modifies` claim symbols; `consumes` and path globs are stored
-as intent context. Leases expire unless renewed; active intents continue to reserve
-their targets until closed. Imported calls are resolved on a best-effort basis;
-dynamic dispatch and name shadowing remain limitations.
+- `module` defaults to the name derived from `path`. Example: `src/pkg/auth.py` becomes `pkg.auth`.
+- Only `produces` and `modifies` claim symbols. `consumes` and `scope` are context only.
+- An active intent reserves its symbols until its owner closes it, also after its leases expire.
+- Closing an intent releases its leases. It does not merge code or delete the overlay.
+- Invalid Python returns a tool error and changes nothing.
+- One database transaction holds each check and its writes. Two bots cannot claim one symbol at the same time.
 
-### Public tunnel for a shared demo
+## Detection details
 
-With `cloudflared` installed, start `cloudflared tunnel --url http://127.0.0.1:8000`.
-Copy the assigned hostname, then start the broker with that hostname allowed:
+**Broken contract.** The broker compares each new signature with the base signature:
 
-```sh
-uv run python -m grokmesh.server --db mesh.db --base-root path/to/main/checkout \
-  --public-host YOUR-HOST.trycloudflare.com
-```
+- **Compatible:** a new optional parameter, or a changed default value.
+- **Breaking:** a removed, renamed or new required parameter, a lost `*args` or `**kwargs`, a sync/async change, any annotation change, any class-header change.
 
-Connect Grok Bot to `https://YOUR-HOST.trycloudflare.com/mcp`. The broker currently
-assumes trusted demo participants: developer IDs are caller-supplied and there is
-no authentication. Host validation remains enabled for the tunnel hostname.
+A caller counts when it is in another developer's overlay with an active lease, or when that developer names it in a declaration or a check. Calls inside one developer's work do not count.
 
-Run checks with `uv run pytest`, `uv run ruff check src tests`, and `uv run mypy`.
+**Duplication.** The broker searches other developers' active intents and leased symbols with SQLite FTS5 (BM25).
 
+- A match needs two or more shared words after common words are removed.
+- The broker returns at most five warnings. Warnings never block.
+- It cannot match synonyms without shared words. Treat each match as a hint.
 
-### Broken contracts
+**Call resolution.** The parser resolves calls to local functions, to `self`/`cls` methods, and through imports, including relative imports. It does not resolve dynamic dispatch or name shadowing.
 
-File sync classifies signature changes against the base: added, unchanged,
-compatible, or breaking. Optional parameters can be added safely; removed or
-renamed parameters, new required parameters, lost variadic arguments, and
-sync/async changes are breaking. Annotation and class-header changes are
-conservatively breaking; type subtyping and runtime behavior are not analyzed.
-Changing an existing default value remains compatible by call shape.
+## Dashboard
 
-A breaking symbol with a call edge from another developer's leased WIP symbol
-produces a report naming the caller, owner, and before/after signatures.
-`check_collision` and intent declaration block affected caller edits. After an
-upload, `sync_file` publishes the source and returns impact warnings, allowing
-the latest graph to remain visible and callers to upload their fixes. Expired
-leases, unchanged base callers, and calls within one developer's work do not
-produce these conflicts. Call-shape compatibility is conservative: inspect the
-reported contract before deciding whether to update or escalate.
+Open `http://127.0.0.1:8000/` while the broker runs. No build step is needed.
 
-### Possible duplication (BM25 fallback)
+- **Demo mode** shows three sample developers in a separate in-memory database. It never changes team data.
+- **Live workspace** reads the broker's real state every three seconds.
+- **Present** hides the sidebar and enlarges the graph. Press `/` to search and Escape to exit.
+- Click a symbol or **Explore conflict** to see signatures, contracts and next steps.
+- `/api/dashboard` serves the live data. `/api/dashboard?demo=1` serves the sample data. Neither returns source code.
 
-`declare_intent` searches other developers' active intents and leased WIP symbols
-for related work, even when the target symbol names differ. Results appear in
-`collisions` with `kind: duplication`, `severity: warn`, and reuse/stub/escalation
-suggestions. They do not block the declaration.
+## Repository
 
-This is the plan's text-search fallback, using SQLite FTS5/BM25. It requires at
-least two distinct shared words after filtering common English and code words,
-searches up to 100 ranked candidates, and returns at most five warnings. The index
-updates atomically with symbol and intent writes and backfills existing databases
-on startup. Own work, closed intents, base symbols, and expired symbol leases are
-excluded; active intents remain eligible until closed.
+| Path | Content |
+| --- | --- |
+| `src/grokmesh/` | Broker: store, parser, sync and leases, intents, three detection stages, Mesh Bot queries, MCP server, dashboard. |
+| `demo/` | Demo app (`auth.py`, `api.py`), the two-terminal demo (`demo_1.py`, `demo_2.py`) and the scripted demo (`run_demo.py`). |
+| `tests/` | 76 tests, including MCP over HTTP. |
+| `docs/` | [IDEA.md](docs/IDEA.md) (design), [PLAN.md](docs/PLAN.md) (build plan), pitch films. |
+| `pitch/` | Remotion source of the films. Render: `cd pitch && pnpm install && pnpm exec remotion render src/index.ts GrokMeshKanzen out/film.mp4`. |
+| `sessions/` | AI coding session exports, as the organizers require. |
 
-Treat matches as unconfirmed suggestions. This version cannot detect synonyms
-without shared words, and words in common can still produce false positives.
-Embeddings, cosine retrieval, and Grok confirmation remain upcoming features.
-
-
-### Finishing work and shared Mesh Bot queries
-
-Call `close_intent` with your `dev_id` and returned `intent_id` when work is done.
-The default status is `done`; use `abandoned` when stopping without completing it.
-Only the owner can close an intent. Repeated calls are safe, and leases linked to
-other intents are preserved. Closing releases claims; it does not merge code into
-the base or delete uploaded overlays.
-
-A shared bot can use `get_activity` to answer "who works on what?" from active
-intent goals, scopes, symbol paths and lease expiry times. An active intent remains
-visible even when its leases expire, until its owner closes it.
-
-`get_collision_digest` recomputes exact conflicts, broken contracts and unconfirmed
-BM25 duplication suggestions from current state. Results are grouped by affected
-developer, with blocking reports first. `report_count` counts developer reports,
-so a two-person conflict may appear twice. Both tools accept an optional `dev_id`
-filter and return empty lists when there is no matching activity or conflict.
-These are read-only, on-demand tools; scheduled delivery and the live shared bot
-connection are still to be configured.
-
-### Presentation dashboard
-
-Open the broker's root URL, `http://127.0.0.1:8000/`, for the dashboard. The MCP
-endpoint remains at `/mcp`. Start the broker as usual; the frontend has no separate
-build step or JavaScript dependencies:
+## Development
 
 ```sh
-uv run python -m grokmesh.server --db mesh.db --base-root path/to/main/checkout
+uv run pytest
+uv run ruff check .
+uv run mypy
 ```
-
-The dashboard opens in **Demo** mode with three sample developers and scenarios
-for exact conflicts, broken contracts and possible duplication. Sample state is
-generated by the collision engine in a separate in-memory database and never
-modifies team data. Select **Live workspace** to read the broker's real state,
-refreshed every three seconds. The selected mode is remembered in your browser.
-
-For your presentation, click **Present** to hide the sidebar and expand the graph.
-Click any symbol or **Explore conflict** to inspect signatures, before/after
-contracts and suggested next steps. Symbol search, zoom controls, contract tables,
-team activity and blocking/warning filters are available; press `/` to focus search
-or Escape to leave presentation mode. Mobile layouts include bottom navigation
-and a horizontally scrollable graph.
-
-The read-only `/api/dashboard` route serves live metadata; `?demo=1` serves the
-isolated sample workspace. At most 18 symbols appear in the graph, prioritizing
-active and affected symbols; the metric reports the total indexed context. No
-source code is returned. Dashboard metadata has the same trusted-demo access
-assumptions as the MCP broker.
