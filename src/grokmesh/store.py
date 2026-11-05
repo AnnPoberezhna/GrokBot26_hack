@@ -433,6 +433,11 @@ class Store:
             rows = self._conn.execute(sql + " ORDER BY symbol_id, dev_id", args).fetchall()
         return [_lease(r) for r in rows]
 
+    def release_symbol_lease(self, symbol_id: str, dev_id: str) -> None:
+        """Release one developer's claim when a symbol is reverted."""
+        with self.transaction() as c:
+            c.execute("DELETE FROM lease WHERE symbol_id = ? AND dev_id = ?", (symbol_id, dev_id))
+
     def release_leases(self, dev_id: str, intent_id: str | None = None) -> int:
         sql = "DELETE FROM lease WHERE dev_id = ?"
         args: tuple[str, ...] = (dev_id,)

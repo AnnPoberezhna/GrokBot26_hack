@@ -114,7 +114,7 @@ One commit per row, in this order.
 | [x] | Starting plan | This document. | — |
 | [x] | Store | SQLite schema: symbols per layer, edges, intents, leases. | MVP |
 | [x] | Parser | `ast` extracts symbols, signatures and `calls` edges from one Python file. | MVP |
-| [ ] | Leases | `sync_file` parses a file, writes the developer's overlay and renews leases with a TTL. | MVP |
+| [x] | Leases | `sync_file` parses a file, writes the developer's overlay and renews leases with a TTL. | MVP |
 | [ ] | Intents | `declare_intent` stores a structured intent: `goal`, `produces`, `consumes`, `modifies`, `scope`. | MVP |
 | [ ] | Same-symbol collision | Stage 1: an intent or a sync against another developer's active lease. | MVP |
 | [ ] | MCP server | FastMCP over HTTP with `declare_intent`, `sync_file`, `check_collision`, `get_contracts`. Tunnel to a public URL. | MVP |
