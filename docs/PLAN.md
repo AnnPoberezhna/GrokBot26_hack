@@ -116,7 +116,7 @@ One commit per row, in this order.
 | [x] | Parser | `ast` extracts symbols, signatures and `calls` edges from one Python file. | MVP |
 | [x] | Leases | `sync_file` parses a file, writes the developer's overlay and renews leases with a TTL. | MVP |
 | [x] | Intents | `declare_intent` stores a structured intent: `goal`, `produces`, `consumes`, `modifies`, `scope`. | MVP |
-| [ ] | Same-symbol collision | Stage 1: an intent or a sync against another developer's active lease. | MVP |
+| [x] | Same-symbol collision | Stage 1: an intent or a sync against another developer's active lease. | MVP |
 | [ ] | MCP server | FastMCP over HTTP with `declare_intent`, `sync_file`, `check_collision`, `get_contracts`. Tunnel to a public URL. | MVP |
 | [ ] | Grok Bot setup | Two developer bots connected to the MCP server, with instructions to check before they code. | MVP |
 | [ ] | Broken contract | Stage 2: a breaking signature change plus a `calls` edge into another developer's uncommitted code. | MVP |
