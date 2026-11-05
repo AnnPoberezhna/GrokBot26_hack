@@ -34,7 +34,8 @@ Each script is a real MCP client that talks to the broker over HTTP, like a Grok
 The two developers can sit on different git branches: the broker sees uncommitted work, not branches.
 
 ```sh
-uv run python -m grokmesh.server --db mesh.db --base-root .   # broker
+rm -f demo.db*   # fresh state: overlays from an earlier run would block step 1
+uv run python -m grokmesh.server --db demo.db --base-root .   # broker
 uv run python demo/demo_1.py    # terminal 1: tim, backend, changes login(user_id) -> login(user_id, password)
 uv run python demo/demo_2.py    # terminal 2: anna, frontend client, sees the change and adapts
 ```
