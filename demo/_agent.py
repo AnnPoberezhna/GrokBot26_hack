@@ -56,9 +56,11 @@ class Agent:
 def run(dev_id: str, script: Callable[[Agent], Awaitable[None]]) -> None:
     async def main() -> None:
         print(f"{BOLD}{GREEN}GrokMesh agent · {dev_id}{RESET}  {DIM}{URL}{RESET}")
-        async with streamable_http_client(URL) as (read, write, _):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
-                await script(Agent(session, dev_id))
+        async with (
+            streamable_http_client(URL) as (read, write, _),
+            ClientSession(read, write) as session,
+        ):
+            await session.initialize()
+            await script(Agent(session, dev_id))
 
     asyncio.run(main())

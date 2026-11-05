@@ -57,9 +57,8 @@ async def script(anna: Agent) -> None:
     step("[4] Anna's bot adapts on the fly and syncs again")
     res = await anna.call("sync_file", path="demo/client.py", source=ADAPTED, intent_id=intent_id)
     for c in res["collisions"]:
-        print(
-            f"  {DIM}still tracked while Tim's change is open: {c['symbol_id']} -> {c['caller_symbol_id']}{RESET}"
-        )
+        edge = f"{c['caller_symbol_id']} -> {c['symbol_id']}"
+        print(f"  {DIM}still tracked while Tim's change is open: {edge}{RESET}")
     say(
         "anna",
         f"{GREEN}client now calls login(user_id, password), before either one commits{RESET}",
