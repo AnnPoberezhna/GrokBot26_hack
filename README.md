@@ -28,6 +28,20 @@ Source: [pitch/src/kanzen/](pitch/src/kanzen/), made with Remotion in the Kanzen
 More: [docs/IDEA.md](docs/IDEA.md) (design), [docs/PLAN.md](docs/PLAN.md) (build plan),
 [docs/grokmesh-pitch.mp4](docs/grokmesh-pitch.mp4) (first film draft).
 
+## Live demo: two agents, two terminals
+
+Each script is a real MCP client that talks to the broker over HTTP, like a Grok Bot.
+The two developers can sit on different git branches: the broker sees uncommitted work, not branches.
+
+```sh
+uv run python -m grokmesh.server --db mesh.db --base-root .   # broker
+uv run python demo/demo_1.py    # terminal 1: tim, backend, changes login(user_id) -> login(user_id, password)
+uv run python demo/demo_2.py    # terminal 2: anna, frontend client, sees the change and adapts
+```
+
+Press Enter to advance. Run `demo_1.py` steps 1–2 first. Set `GROKMESH_URL` for a tunnel URL.
+`demo/run_demo.py` is the single-terminal scripted version.
+
 ## Run the MCP broker
 
 Requires Python 3.12+ and `uv`:
