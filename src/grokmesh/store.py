@@ -71,6 +71,59 @@ CREATE TABLE IF NOT EXISTS lease (
     PRIMARY KEY (symbol_id, dev_id)
 );
 CREATE INDEX IF NOT EXISTS lease_dev ON lease (dev_id);
+CREATE VIRTUAL TABLE IF NOT EXISTS work_search USING fts5(
+    kind UNINDEXED, symbol_id UNINDEXED, layer UNINDEXED,
+    intent_id UNINDEXED, dev_id UNINDEXED, content
+);
+CREATE TRIGGER IF NOT EXISTS symbol_search_insert AFTER INSERT ON symbol BEGIN
+    INSERT INTO work_search VALUES (
+        'symbol', new.symbol_id, new.layer, '', substr(new.layer, 5),
+        new.symbol_id || ' ' || new.signature || ' ' || coalesce(new.summary, '')
+    );
+END;
+CREATE TRIGGER IF NOT EXISTS symbol_search_delete AFTER DELETE ON symbol BEGIN
+    DELETE FROM work_search WHERE kind = 'symbol'
+        AND symbol_id = old.symbol_id AND layer = old.layer;
+END;
+CREATE TRIGGER IF NOT EXISTS symbol_search_update AFTER UPDATE ON symbol BEGIN
+    DELETE FROM work_search WHERE kind = 'symbol'
+        AND symbol_id = old.symbol_id AND layer = old.layer;
+    INSERT INTO work_search VALUES (
+        'symbol', new.symbol_id, new.layer, '', substr(new.layer, 5),
+        new.symbol_id || ' ' || new.signature || ' ' || coalesce(new.summary, '')
+    );
+END;
+CREATE TRIGGER IF NOT EXISTS intent_search_insert AFTER INSERT ON intent BEGIN
+    INSERT INTO work_search VALUES (
+        'intent', '', '', new.intent_id, new.dev_id,
+        new.goal || ' ' || new.produces || ' ' || new.modifies
+    );
+END;
+CREATE TRIGGER IF NOT EXISTS intent_search_delete AFTER DELETE ON intent BEGIN
+    DELETE FROM work_search WHERE kind = 'intent' AND intent_id = old.intent_id;
+END;
+CREATE TRIGGER IF NOT EXISTS intent_search_update AFTER UPDATE ON intent BEGIN
+    DELETE FROM work_search WHERE kind = 'intent' AND intent_id = old.intent_id;
+    INSERT INTO work_search VALUES (
+        'intent', '', '', new.intent_id, new.dev_id,
+        new.goal || ' ' || new.produces || ' ' || new.modifies
+    );
+END;
+-- Backfill stores created before search was added, without duplicating rows on reopen.
+INSERT INTO work_search
+SELECT 'symbol', s.symbol_id, s.layer, '', substr(s.layer, 5),
+       s.symbol_id || ' ' || s.signature || ' ' || coalesce(s.summary, '')
+FROM symbol s WHERE NOT EXISTS (
+    SELECT 1 FROM work_search w WHERE w.kind = 'symbol'
+    AND w.symbol_id = s.symbol_id AND w.layer = s.layer
+);
+INSERT INTO work_search
+SELECT 'intent', '', '', i.intent_id, i.dev_id,
+       i.goal || ' ' || i.produces || ' ' || i.modifies
+FROM intent i WHERE NOT EXISTS (
+    SELECT 1 FROM work_search w WHERE w.kind = 'intent' AND w.intent_id = i.intent_id
+);
+
 """
 
 

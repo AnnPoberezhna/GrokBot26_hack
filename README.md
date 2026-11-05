@@ -85,3 +85,21 @@ the latest graph to remain visible and callers to upload their fixes. Expired
 leases, unchanged base callers, and calls within one developer's work do not
 produce these conflicts. Call-shape compatibility is conservative: inspect the
 reported contract before deciding whether to update or escalate.
+
+### Possible duplication (BM25 fallback)
+
+`declare_intent` searches other developers' active intents and leased WIP symbols
+for related work, even when the target symbol names differ. Results appear in
+`collisions` with `kind: duplication`, `severity: warn`, and reuse/stub/escalation
+suggestions. They do not block the declaration.
+
+This is the plan's text-search fallback, using SQLite FTS5/BM25. It requires at
+least two distinct shared words after filtering common English and code words,
+searches up to 100 ranked candidates, and returns at most five warnings. The index
+updates atomically with symbol and intent writes and backfills existing databases
+on startup. Own work, closed intents, base symbols, and expired symbol leases are
+excluded; active intents remain eligible until closed.
+
+Treat matches as unconfirmed suggestions. This version cannot detect synonyms
+without shared words, and words in common can still produce false positives.
+Embeddings, cosine retrieval, and Grok confirmation remain upcoming features.

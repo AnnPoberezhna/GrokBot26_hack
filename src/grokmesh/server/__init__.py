@@ -11,6 +11,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from grokmesh.broken_contract import check_contracts
 from grokmesh.collision import Collision, Severity
+from grokmesh.duplication import check_duplication
 from grokmesh.intents import declare_intent as save_intent
 from grokmesh.leases import sync_file as save_file
 from grokmesh.parser import module_for_path, parse_file
@@ -96,6 +97,7 @@ def create_server(
         """Declare work and claim produced/modified symbols for 30 minutes.
 
         A blocked declaration writes nothing. Consumed symbols do not claim a lease.
+        Similar teammate work returns unconfirmed text-search warnings without blocking.
         """
         with store.transaction():
             ts = time.time()
@@ -116,6 +118,7 @@ def create_server(
                 scope=scope or [],
                 now=ts,
             )
+            collisions += check_duplication(store, intent, now=ts)
             for target in sorted(targets):
                 base = store.get_symbol(target, BASE_LAYER)
                 existing = store.get_lease(target, dev_id)

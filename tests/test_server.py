@@ -236,3 +236,35 @@ def test_broken_contract_over_http() -> None:
                 assert again.structuredContent is not None and again.structuredContent["blocked"]
 
     asyncio.run(scenario())
+
+
+def test_duplication_warns_without_blocking_over_http() -> None:
+    async def scenario() -> None:
+        with Store() as store:
+            async with client(store) as session:
+                await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "anna",
+                        "goal": "JWT token signing",
+                        "produces": ["auth.issue"],
+                    },
+                )
+                result = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "marcel",
+                        "goal": "Build JWT token signing",
+                        "produces": ["security.mint"],
+                    },
+                )
+                assert not result.isError
+                assert result.structuredContent is not None
+                assert result.structuredContent["blocked"] is False
+                warnings = result.structuredContent["collisions"]
+                assert len(warnings) == 1 and warnings[0]["kind"] == "duplication"
+                assert warnings[0]["severity"] == "warn"
+                assert warnings[0]["other_dev"] == "anna"
+                assert len(store.active_intents()) == 2
+
+    asyncio.run(scenario())
