@@ -4,6 +4,8 @@
 
 Source idea and architecture: [docs/IDEA.md](docs/IDEA.md)
 
+Pitch film (55 s, no sound): [docs/grokmesh-pitch.mp4](docs/grokmesh-pitch.mp4). Source: [pitch/](pitch/) (Remotion, `cd pitch && pnpm render`).
+
 ## Run the MCP broker
 
 Requires Python 3.12+ and `uv`:
