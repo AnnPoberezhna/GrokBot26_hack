@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import asdict, replace
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
@@ -12,8 +12,11 @@ from mcp.server.transport_security import TransportSecuritySettings
 from grokmesh.broken_contract import check_contracts
 from grokmesh.collision import Collision, Severity
 from grokmesh.duplication import check_duplication
+from grokmesh.intents import close_intent as finish_intent
 from grokmesh.intents import declare_intent as save_intent
 from grokmesh.leases import sync_file as save_file
+from grokmesh.mesh_bot import get_activity as activity_snapshot
+from grokmesh.mesh_bot import get_collision_digest as collision_digest
 from grokmesh.parser import module_for_path, parse_file
 from grokmesh.same_symbol import check_intent
 from grokmesh.store import (
@@ -21,6 +24,7 @@ from grokmesh.store import (
     DEFAULT_LEASE_TTL_S,
     ChangeKind,
     Intent,
+    IntentStatus,
     Lease,
     Store,
     overlay_layer,
@@ -53,7 +57,9 @@ def create_server(
             "collision message to your human and pick a listed resolution. "
             "3) After each edit, call sync_file with the full source of the changed file "
             "and your intent_id. "
-            "4) Before you call another developer's function, call get_contracts for it."
+            "4) Before you call another developer's function, call get_contracts for it. "
+            "5) When finished or abandoning work, call close_intent to release its claims. "
+            "For team questions, use get_activity and get_collision_digest."
         ),
         transport_security=TransportSecuritySettings(
             enable_dns_rebinding_protection=True,
@@ -229,5 +235,35 @@ def create_server(
                         }
                     )
             return {"contracts": contracts}
+
+    @server.tool()
+    def close_intent(
+        dev_id: str,
+        intent_id: str,
+        status: Literal["done", "abandoned"] = "done",
+    ) -> dict[str, Any]:
+        """Finish or abandon your intent and release only its leases.
+
+        Only the intent owner may close it. Repeating the call is safe. Stored
+        overlays remain available for contract lookup, but their released leases
+        no longer count as active work.
+        """
+        with store.transaction():
+            released = finish_intent(store, dev_id, intent_id, IntentStatus(status))
+            return {"intent_id": intent_id, "status": status, "released_leases": released}
+
+    @server.tool()
+    def get_activity(dev_id: str | None = None) -> dict[str, Any]:
+        """Show who works on what: active goals, scopes, symbol claims and expiry times."""
+        return activity_snapshot(store, dev_id)
+
+    @server.tool()
+    def get_collision_digest(dev_id: str | None = None) -> dict[str, Any]:
+        """Summarize current conflicts and duplication warnings by developer.
+
+        Read-only and on demand; this tool does not schedule or send messages.
+        Report counts reflect developer perspectives, not unique team conflicts.
+        """
+        return collision_digest(store, dev_id)
 
     return server

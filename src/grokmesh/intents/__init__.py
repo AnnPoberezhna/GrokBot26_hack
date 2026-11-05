@@ -74,11 +74,11 @@ def close_intent(
     """Close an intent and release its leases. Return the number of released leases."""
     if status is IntentStatus.ACTIVE:
         raise ValueError("close_intent needs a final status")
-    intent = store.get_intent(intent_id)
-    if intent is None:
-        raise KeyError(intent_id)
-    if intent.dev_id != dev_id:
-        raise PermissionError(f"intent {intent_id} belongs to {intent.dev_id}")
     with store.transaction():
+        intent = store.get_intent(intent_id)
+        if intent is None:
+            raise KeyError(intent_id)
+        if intent.dev_id != dev_id:
+            raise PermissionError(f"intent {intent_id} belongs to {intent.dev_id}")
         store.set_intent_status(intent_id, status, now=now)
         return store.release_leases(dev_id, intent_id=intent_id)

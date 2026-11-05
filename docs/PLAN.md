@@ -126,5 +126,8 @@ One commit per row, in this order.
 | [ ] | Dashboard | Web view of active leases and collisions, with live updates. | Stretch |
 | [ ] | Tree-sitter | Replace `ast`, so the parser accepts code that does not compile. | Stretch |
 
-MCP progress: the HTTP server and four tools are implemented and tested locally.
+MCP progress: the HTTP server and seven tools are implemented and tested locally.
 The public tunnel and live Grok Bot connection are still pending.
+
+Mesh Bot progress: activity snapshots and collision digests are available through
+MCP on demand. The shared Grok Bot connection and scheduled digest are still pending.

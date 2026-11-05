@@ -27,6 +27,9 @@ on shutdown. Host and port can be set with `--host` and `--port`.
 | `sync_file` | `dev_id`, `path`, `source`; optional `module`, `intent_id`, `ttl_s` | Published symbol IDs and renewed leases, or a blocked result. |
 | `check_collision` | `dev_id`, `symbol_ids` | Competing leases or active intents and a `blocked` flag. |
 | `get_contracts` | `symbol_ids` | Signatures across base and overlays, including owners and active lease state. |
+| `close_intent` | `dev_id`, `intent_id`; optional `status` (`done` or `abandoned`) | Close your intent and release its leases. |
+| `get_activity` | Optional `dev_id` | Active goals, scopes and leased symbols grouped by developer. |
+| `get_collision_digest` | Optional `dev_id` | Current collisions grouped by affected developer. |
 
 `module` is the qualified Python module name, such as `pkg.auth`. It defaults to the
 name derived from `path` (`src/pkg/auth.py` -> `pkg.auth`). `path` labels a
@@ -46,6 +49,7 @@ transaction, so competing declarations cannot both claim the same symbol.
 
 Bot instructions: declare intent before editing, stop when `blocked` is true,
 check collisions before further edits, and sync changed source after each edit.
+Call `close_intent` when finished or abandoning work, so teammates can claim the symbols.
 Only `produces` and `modifies` claim symbols; `consumes` and path globs are stored
 as intent context. Leases expire unless renewed; active intents continue to reserve
 their targets until closed. Imported calls are resolved on a best-effort basis;
@@ -103,3 +107,24 @@ excluded; active intents remain eligible until closed.
 Treat matches as unconfirmed suggestions. This version cannot detect synonyms
 without shared words, and words in common can still produce false positives.
 Embeddings, cosine retrieval, and Grok confirmation remain upcoming features.
+
+
+### Finishing work and shared Mesh Bot queries
+
+Call `close_intent` with your `dev_id` and returned `intent_id` when work is done.
+The default status is `done`; use `abandoned` when stopping without completing it.
+Only the owner can close an intent. Repeated calls are safe, and leases linked to
+other intents are preserved. Closing releases claims; it does not merge code into
+the base or delete uploaded overlays.
+
+A shared bot can use `get_activity` to answer "who works on what?" from active
+intent goals, scopes, symbol paths and lease expiry times. An active intent remains
+visible even when its leases expire, until its owner closes it.
+
+`get_collision_digest` recomputes exact conflicts, broken contracts and unconfirmed
+BM25 duplication suggestions from current state. Results are grouped by affected
+developer, with blocking reports first. `report_count` counts developer reports,
+so a two-person conflict may appear twice. Both tools accept an optional `dev_id`
+filter and return empty lists when there is no matching activity or conflict.
+These are read-only, on-demand tools; scheduled delivery and the live shared bot
+connection are still to be configured.

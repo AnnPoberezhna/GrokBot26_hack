@@ -40,6 +40,9 @@ def test_two_developers_over_http() -> None:
                     "sync_file",
                     "check_collision",
                     "get_contracts",
+                    "close_intent",
+                    "get_activity",
+                    "get_collision_digest",
                 }
                 first = await session.call_tool(
                     "declare_intent",
@@ -266,5 +269,90 @@ def test_duplication_warns_without_blocking_over_http() -> None:
                 assert warnings[0]["severity"] == "warn"
                 assert warnings[0]["other_dev"] == "anna"
                 assert len(store.active_intents()) == 2
+
+    asyncio.run(scenario())
+
+
+def test_close_intent_releases_claims_and_updates_team_snapshot_over_http() -> None:
+    async def scenario() -> None:
+        with Store() as store:
+            async with client(store) as session:
+                declared = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "anna",
+                        "goal": "Build auth",
+                        "produces": ["auth.issue"],
+                    },
+                )
+                assert declared.structuredContent is not None
+                iid = declared.structuredContent["intent"]["intent_id"]
+                activity = await session.call_tool("get_activity", {})
+                assert activity.structuredContent is not None
+                assert activity.structuredContent["developers"][0]["dev_id"] == "anna"
+                wrong_owner = await session.call_tool(
+                    "close_intent",
+                    {
+                        "dev_id": "tim",
+                        "intent_id": iid,
+                    },
+                )
+                assert wrong_owner.isError
+                assert store.get_lease("auth.issue", "anna") is not None
+                invalid_status = await session.call_tool(
+                    "close_intent",
+                    {
+                        "dev_id": "anna",
+                        "intent_id": iid,
+                        "status": "active",
+                    },
+                )
+                assert invalid_status.isError
+                closed = await session.call_tool(
+                    "close_intent",
+                    {
+                        "dev_id": "anna",
+                        "intent_id": iid,
+                        "status": "abandoned",
+                    },
+                )
+                assert not closed.isError
+                assert closed.structuredContent is not None
+                assert closed.structuredContent["released_leases"] == 1
+                assert closed.structuredContent["status"] == "abandoned"
+                repeated = await session.call_tool(
+                    "close_intent",
+                    {
+                        "dev_id": "anna",
+                        "intent_id": iid,
+                        "status": "abandoned",
+                    },
+                )
+                assert repeated.structuredContent is not None
+                assert repeated.structuredContent["released_leases"] == 0
+                missing = await session.call_tool(
+                    "close_intent",
+                    {
+                        "dev_id": "anna",
+                        "intent_id": "missing",
+                    },
+                )
+                assert missing.isError
+                activity = await session.call_tool("get_activity", {})
+                assert activity.structuredContent is not None
+                assert activity.structuredContent["developers"] == []
+                digest = await session.call_tool("get_collision_digest", {})
+                assert digest.structuredContent is not None
+                assert digest.structuredContent["report_count"] == 0
+                takeover = await session.call_tool(
+                    "declare_intent",
+                    {
+                        "dev_id": "tim",
+                        "goal": "Build auth",
+                        "modifies": ["auth.issue"],
+                    },
+                )
+                assert takeover.structuredContent is not None
+                assert takeover.structuredContent["blocked"] is False
 
     asyncio.run(scenario())
