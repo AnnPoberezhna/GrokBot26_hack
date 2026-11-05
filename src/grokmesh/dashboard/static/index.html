@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101211">
+  <meta name="description" content="GrokMesh — a shared context for your team's coding agents.">
+  <title>GrokMesh · Team workspace</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23191e16'/%3E%3Ctext x='7' y='24' font-size='25' fill='%23d3ef88'%3EG%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+<svg class="icon-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-mesh" viewBox="0 0 24 24"><path d="m5 6 7-3 7 5-2 11-9 2-5-9 2-6Zm0 0 12 13M12 3 8 21M3 12l16-4M5 6l3 15 11-13"/><circle cx="5" cy="6" r="1.6"/><circle cx="19" cy="8" r="1.6"/><circle cx="8" cy="21" r="1.6"/></symbol>
+  <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2 12h5l3-8 4 16 3-8h5"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 6-6 6 6 6m8-12 6 6-6 6M14 3l-4 18"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m10.2 4-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.8-3l-8-14a2 2 0 0 0-3.6 0Z"/><path d="M12 9v4m0 3v1"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L20 5"/></symbol>
+</defs></svg>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="/" aria-label="GrokMesh home"><span class="brand-mark"><svg><use href="#i-mesh"/></svg></span>GrokMesh<span class="beta">BETA</span></a>
+    <div class="workspace-switch"><span class="workspace-icon">G</span><div>Team workspace<small>Shared code intelligence</small></div><span class="chevron">⌄</span></div>
+    <div class="nav-label">WORKSPACE</div>
+    <nav aria-label="Workspace navigation">
+      <button class="nav-item active" data-view="overview"><svg><use href="#i-grid"/></svg>Overview</button>
+      <button class="nav-item" data-view="graph"><svg><use href="#i-mesh"/></svg>Code graph</button>
+      <button class="nav-item" data-view="activity"><svg><use href="#i-pulse"/></svg>Team activity</button>
+      <button class="nav-item" data-view="contracts"><svg><use href="#i-code"/></svg>Contracts</button>
+      <button class="nav-item" data-view="collisions"><svg><use href="#i-alert"/></svg>Collisions<span id="nav-count" class="nav-count">0</span></button>
+    </nav>
+    <div class="sidebar-note"><div class="mini-orbit"><span></span><span></span><span></span></div><strong>Context is a team sport.</strong><p>One shared graph. Every agent on the same page.</p></div>
+    <div class="sidebar-footer"><span class="online-dot"></span><span id="broker-status">Broker connected</span><span class="footer-version">v0.1</span></div>
+  </aside>
+  <div class="workspace-body">
+    <header class="topbar"><div class="breadcrumb">Workspace<span>/</span><strong id="view-label">Overview</strong></div><div class="topbar-right"><span class="topbar-hint">Made for parallel minds</span><button id="present-button" class="button subtle"><svg><use href="#i-expand"/></svg><span>Present</span></button><span class="profile-avatar">G</span></div></header>
+    <main id="main-content">
+      <section class="page-heading"><div><div class="eyebrow"><span class="tiny-spark">✳</span> YOUR TEAM, IN SYNC</div><h1>Move fast. <span>Stay together.</span></h1><p>A live view of your agents’ work. Catch collisions before code collides.</p></div><div class="heading-actions"><div class="mode-switch" aria-label="Data source"><button id="demo-mode" class="selected" aria-pressed="true">Demo</button><button id="live-mode" aria-pressed="false">Live workspace</button></div><div class="connection-label" id="connection-label"><span class="online-dot"></span><span>Connecting…</span></div></div></section>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <section class="metrics" aria-label="Workspace metrics">
+        <div class="metric"><span class="metric-label">Active developers<svg><use href="#i-pulse"/></svg></span><div><strong id="metric-developers">—</strong><span class="metric-note" id="metric-team">Connected through one mesh</span></div><div id="metric-avatars" class="avatar-stack"></div></div>
+        <div class="metric"><span class="metric-label">Symbols in context<svg><use href="#i-mesh"/></svg></span><div><strong id="metric-symbols">—</strong><span class="metric-note">Functions & shared contracts</span></div><span class="metric-baseline">The team’s shared source of context</span></div>
+        <div class="metric"><span class="metric-label">Active leases<svg><use href="#i-code"/></svg></span><div><strong id="metric-leases">—</strong><span class="metric-note">Claims with a heartbeat</span></div><div class="lease-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="metric collision-metric"><span class="metric-label">Needs attention<svg><use href="#i-alert"/></svg></span><div><strong id="metric-collisions">—</strong><span class="metric-note" id="metric-conflict-note">Checking shared work</span></div><span class="attention-caption"><span></span>Before the pull request.</span></div>
+      </section>
+      <div class="content-grid">
+        <section class="panel graph-panel" id="graph-panel"><div class="panel-heading"><div><h2><svg><use href="#i-mesh"/></svg>Shared code graph</h2><span class="panel-caption">Different agents. One connected picture.</span></div><span class="small-badge" id="graph-badge">LIVE CONTEXT</span></div><div class="graph-toolbar"><div class="graph-legend"><span><i class="legend-base"></i>Base</span><span><i class="legend-active"></i>In progress</span><span><i class="legend-conflict"></i>Collision</span></div><label class="search-box"><svg><use href="#i-search"/></svg><input id="symbol-search" placeholder="Find a symbol…" aria-label="Find a symbol" autocomplete="off"><kbd>/</kbd></label></div><div class="graph-stage"><svg id="code-graph" viewBox="0 0 950 400" role="group" aria-label="Interactive shared code graph"></svg><div class="graph-empty" id="graph-empty" hidden><svg><use href="#i-mesh"/></svg><h3>Your shared graph starts here.</h3><p>Sync a Python file through MCP to see your team’s work.<br>Switch to Demo for a guided preview.</p></div><div class="graph-controls"><button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-reset" aria-label="Reset graph zoom">100%</button><button id="zoom-in" aria-label="Zoom in">+</button></div><div class="graph-footnote" id="graph-footnote">Select a symbol to explore its contract</div></div><div class="graph-footer"><span><span class="online-dot"></span><span id="sync-label">Waiting for context</span></span><span class="mono" id="graph-summary">— nodes · — edges</span></div></section>
+        <section class="panel activity-panel" id="activity-panel"><div class="panel-heading"><div><h2>In the mesh</h2><span class="panel-caption">What your teammates are building</span></div><span class="count-pill" id="team-count">0</span></div><div id="team-list" class="team-list"></div><div class="activity-footer"><svg><use href="#i-check"/></svg>Live intents, not guesswork.</div></section>
+      </div>
+      <section class="panel contracts-panel" id="contracts-panel" hidden><div class="panel-heading"><div><h2>Published contracts</h2><span class="panel-caption">The signatures your agents can build against.</span></div><span class="small-badge">CONTRACT FIRST</span></div><div class="table-scroll"><table><thead><tr><th>Symbol</th><th>Contract</th><th>Owner</th><th>Status</th></tr></thead><tbody id="contract-rows"></tbody></table></div></section>
+      <section class="collision-section" id="collision-section"><div class="section-heading"><div class="section-title"><h2>Intercepted collisions</h2><span class="count-pill" id="collision-count">0</span><span class="section-subtitle">A heads-up while it still matters.</span></div><div class="filter-tabs" role="group" aria-label="Filter collisions"><button class="selected" data-filter="all">All</button><button data-filter="block">Blocking</button><button data-filter="warn">Warnings</button></div></div><div id="collision-list" class="collision-list"></div></section>
+      <footer class="main-footer"><span><svg><use href="#i-mesh"/></svg>Shared context. Fewer collisions.</span><span id="mode-footer">Demonstration workspace · sample data</span></footer>
+    </main>
+    <nav class="mobile-nav" aria-label="Mobile workspace navigation">
+      <button class="nav-item active" data-view="overview"><svg><use href="#i-grid"/></svg>Overview</button>
+      <button class="nav-item" data-view="graph"><svg><use href="#i-mesh"/></svg>Graph</button>
+      <button class="nav-item" data-view="activity"><svg><use href="#i-pulse"/></svg>Activity</button>
+      <button class="nav-item" data-view="contracts"><svg><use href="#i-code"/></svg>Contracts</button>
+      <button class="nav-item" data-view="collisions"><svg><use href="#i-alert"/></svg>Collisions</button>
+    </nav>
+  </div>
+</div>
+<dialog id="contract-dialog"><div class="dialog-heading"><span class="eyebrow">SYMBOL INSPECTOR</span><button id="close-dialog" class="icon-button" aria-label="Close symbol inspector">×</button></div><div id="contract-detail"></div><div class="dialog-actions"><button id="copy-contract" class="button primary"><svg><use href="#i-copy"/></svg>Copy contract</button><button id="dismiss-dialog" class="button subtle">Done</button></div></dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+</body></html>

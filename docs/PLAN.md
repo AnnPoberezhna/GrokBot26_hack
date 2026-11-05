@@ -123,7 +123,7 @@ One commit per row, in this order.
 | [ ] | Duplication | Stage 3: BM25 + cosine search of a new intent against other developers' symbols and intents. | Stretch |
 | [ ] | Judge | Stage 4: Grok confirms collision candidates and drops false positives. | Stretch |
 | [ ] | Mesh Bot | A shared bot that answers "who works on what" and runs a collision digest routine. | Stretch |
-| [ ] | Dashboard | Web view of active leases and collisions, with live updates. | Stretch |
+| [x] | Dashboard | Web view of active leases and collisions, with live updates. | Stretch |
 | [ ] | Tree-sitter | Replace `ast`, so the parser accepts code that does not compile. | Stretch |
 
 MCP progress: the HTTP server and seven tools are implemented and tested locally.

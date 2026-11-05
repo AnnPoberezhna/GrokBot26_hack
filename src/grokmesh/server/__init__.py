@@ -11,6 +11,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from grokmesh.broken_contract import check_contracts
 from grokmesh.collision import Collision, Severity
+from grokmesh.dashboard import register_dashboard
 from grokmesh.duplication import check_duplication
 from grokmesh.intents import close_intent as finish_intent
 from grokmesh.intents import declare_intent as save_intent
@@ -266,4 +267,5 @@ def create_server(
         """
         return collision_digest(store, dev_id)
 
+    register_dashboard(server, store)
     return server
