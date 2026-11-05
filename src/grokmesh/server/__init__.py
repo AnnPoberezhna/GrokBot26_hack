@@ -12,9 +12,17 @@ from mcp.server.transport_security import TransportSecuritySettings
 from grokmesh.collision import Collision, Severity
 from grokmesh.intents import declare_intent as save_intent
 from grokmesh.leases import sync_file as save_file
-from grokmesh.parser import parse_file
+from grokmesh.parser import module_for_path, parse_file
 from grokmesh.same_symbol import check_intent
-from grokmesh.store import BASE_LAYER, DEFAULT_LEASE_TTL_S, Intent, Lease, Store, overlay_layer
+from grokmesh.store import (
+    BASE_LAYER,
+    DEFAULT_LEASE_TTL_S,
+    ChangeKind,
+    Intent,
+    Lease,
+    Store,
+    overlay_layer,
+)
 
 
 def create_server(
@@ -34,7 +42,17 @@ def create_server(
         port=port,
         stateless_http=True,
         json_response=True,
-        instructions="Declare intent before editing. Respect blocked responses. Sync after edits.",
+        instructions=(
+            "GrokMesh keeps the coding agents of one team from colliding. "
+            "Use one stable dev_id per developer. "
+            "1) Before you write code, call declare_intent with the symbols you will "
+            "produce or modify, as module.Class.method IDs. "
+            "2) If a response has blocked=true, do not edit those symbols: show the "
+            "collision message to your human and pick a listed resolution. "
+            "3) After each edit, call sync_file with the full source of the changed file "
+            "and your intent_id. "
+            "4) Before you call another developer's function, call get_contracts for it."
+        ),
         transport_security=TransportSecuritySettings(
             enable_dns_rebinding_protection=True,
             allowed_hosts=allowed_hosts,
@@ -95,18 +113,23 @@ def create_server(
             for target in sorted(targets):
                 base = store.get_symbol(target, BASE_LAYER)
                 existing = store.get_lease(target, dev_id)
-                if existing is not None and not existing.is_active(ts):
+                active = existing is not None and existing.is_active(ts)
+                if existing is not None and not active:
                     store.release_symbol_lease(target, dev_id)
+                # A claim is not a change yet: keep the current signature as "after",
+                # so collision messages and contract checks do not read it as a deletion.
+                base_sig = base.signature if base else None
                 store.touch_lease(
                     Lease(
                         target,
                         dev_id,
                         heartbeat=ts,
                         intent_id=intent.intent_id,
-                        sig_before=base.signature if base else None,
-                        sig_after=existing.sig_after
-                        if existing and existing.is_active(ts)
-                        else None,
+                        sig_before=base_sig,
+                        sig_after=existing.sig_after if existing and active else base_sig,
+                        change_kind=existing.change_kind
+                        if existing and active
+                        else ChangeKind.NONE,
                     )
                 )
             return {
@@ -119,20 +142,22 @@ def create_server(
     def sync_file(
         dev_id: str,
         path: str,
-        module: str,
         source: str,
+        module: str | None = None,
         intent_id: str | None = None,
         ttl_s: int = DEFAULT_LEASE_TTL_S,
     ) -> dict[str, Any]:
         """Parse uploaded Python source, publish its overlay and renew changed-symbol leases.
 
-        path is a repository-relative label; no local files are read. A blocked
+        path is a repository-relative label; no local files are read. module defaults
+        to the module name derived from path (src/pkg/auth.py -> pkg.auth). A blocked
         sync writes nothing. Invalid Python returns a tool error without writes.
         """
         if not dev_id.strip():
             raise ValueError("dev_id must not be blank")
         if ttl_s <= 0:
             raise ValueError("ttl_s must be positive")
+        module = module or module_for_path(path)
         parsed = parse_file(source, path, module, overlay_layer(dev_id))
         with store.transaction():
             if intent_id is not None:

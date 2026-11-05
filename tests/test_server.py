@@ -9,6 +9,7 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
 from grokmesh.intents import close_intent
+from grokmesh.parser import parse_file
 from grokmesh.server import create_server
 from grokmesh.store import Lease, Store
 
@@ -112,5 +113,53 @@ def test_two_developers_over_http() -> None:
                 )
                 assert expired.structuredContent is not None
                 assert expired.structuredContent["blocked"] is False
+
+    asyncio.run(scenario())
+
+
+AUTH = (
+    "def issue(token: str) -> str:\n    return token\n\n\n"
+    "def verify(token: str) -> bool:\n    return True\n"
+)
+
+
+def test_claim_is_not_a_deletion_and_base_keeps_unrelated_edits_free() -> None:
+    async def scenario() -> None:
+        with Store() as store:
+            base = parse_file(AUTH, "auth.py", "auth", "base")
+            store.replace_file("base", "auth.py", base.symbols, base.edges)
+            async with client(store) as session:
+                claim = await session.call_tool(
+                    "declare_intent",
+                    {"dev_id": "anna", "goal": "JWT", "modifies": ["auth.issue"]},
+                )
+                assert claim.structuredContent is not None
+                assert claim.structuredContent["blocked"] is False
+                lease = store.get_lease("auth.issue", "anna")
+                assert lease is not None
+                assert lease.sig_after == lease.sig_before == "def issue(token: str) -> str"
+
+                blocked = await session.call_tool(
+                    "check_collision", {"dev_id": "tim", "symbol_ids": ["auth.issue"]}
+                )
+                assert blocked.structuredContent is not None
+                message = blocked.structuredContent["collisions"][0]["message"]
+                assert "(deleted)" not in message
+
+                # Tim edits only verify(); module comes from the path.
+                synced = await session.call_tool(
+                    "sync_file",
+                    {
+                        "dev_id": "tim",
+                        "path": "auth.py",
+                        "source": AUTH.replace("return True", "return False"),
+                    },
+                )
+                assert not synced.isError
+                assert synced.structuredContent is not None
+                assert synced.structuredContent["blocked"] is False
+                assert {x.symbol_id for x in store.active_leases() if x.dev_id == "tim"} == {
+                    "auth.verify"
+                }
 
     asyncio.run(scenario())
