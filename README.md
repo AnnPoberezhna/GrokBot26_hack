@@ -5,7 +5,7 @@
 Source idea and architecture: [docs/IDEA.md](docs/IDEA.md)
 
 Pitch film (55 s, no sound): [docs/grokmesh-pitch.mp4](docs/grokmesh-pitch.mp4).
-Kanzen version (75 s, explains the mechanism): [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4). Source: [pitch/](pitch/) (Remotion, `cd pitch && pnpm render`).
+Kanzen version (76 s, dark, explains the mechanism): [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4). Source: [pitch/](pitch/) (Remotion, `cd pitch && pnpm render`).
 
 ## Run the MCP broker
 
