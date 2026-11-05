@@ -5,7 +5,8 @@ It finds collisions when an agent declares its intent, not at the pull request.*
 
 Built at the Grok Bot Hackathon Wrocław on 5 November 2026, 18:00–21:10.
 
-▶ **Pitch film:** [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4) (72 s, no sound).
+▶ **Pitch film: [watch on Google Drive](https://drive.google.com/file/d/1du6Yc3zhX4lK0cMfT5Y62wtsjHhJ0tpo/view?usp=sharing)** (72 s, no sound).
+The same file is in the repository: [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4).
 
 ## Summary
 
@@ -41,7 +42,7 @@ The jury limit is 90 seconds. Use one of these three formats.
 
 | Format | Command | Use when |
 | --- | --- | --- |
-| **Film** | Play [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4) | You want a fixed, offline 72-second pitch. |
+| **Film** | Play it from [Google Drive](https://drive.google.com/file/d/1du6Yc3zhX4lK0cMfT5Y62wtsjHhJ0tpo/view?usp=sharing) or [docs/grokmesh-pitch-kanzen.mp4](docs/grokmesh-pitch-kanzen.mp4) | You want a fixed 72-second pitch. The repository copy plays offline. |
 | **Two-terminal live demo** | See [Live demo](#live-demo-two-agents-two-terminals) | You want to show real MCP traffic between two agents. |
 | **Dashboard** | Start the broker, open `http://127.0.0.1:8000/` | You want a visual graph of leases and collisions. |
 
