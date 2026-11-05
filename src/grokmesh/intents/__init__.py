@@ -11,7 +11,12 @@ from grokmesh.store import Intent, IntentStatus, Store
 
 def _clean(values: Iterable[str]) -> tuple[str, ...]:
     """Strip, drop empty values and duplicates, keep the first-seen order."""
-    return tuple(dict.fromkeys(v.strip() for v in values if v and v.strip()))
+    if isinstance(values, (str, bytes)):
+        raise ValueError("symbol and scope fields must be sequences of strings")
+    items = tuple(values)
+    if any(not isinstance(value, str) for value in items):
+        raise ValueError("symbol and scope fields must contain strings")
+    return tuple(dict.fromkeys(v.strip() for v in items if v and v.strip()))
 
 
 def declare_intent(
