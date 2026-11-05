@@ -110,3 +110,25 @@ def test_optional_parameter_and_same_developer_do_not_collide() -> None:
             store, "anna", "auth.py", "auth", "def issue(token, salt):\n    return token\n", now=40
         )
         assert check_contracts(store, "anna", now=50) == []
+
+
+def test_planned_edit_of_a_main_caller_sees_the_breaking_change() -> None:
+    with Store() as store:
+        base_file(store, "auth.py", "auth", "def issue(token):\n    return token\n")
+        base_file(
+            store, "api.py", "api", "from auth import issue\ndef login():\n    return issue('a')\n"
+        )
+        sync_file(
+            store, "anna", "auth.py", "auth", "def issue(token, ttl):\n    return token\n", now=1
+        )
+        # Marcel has no overlay yet: main's login() calls the changed issue().
+        [report] = check_contracts(store, "marcel", ["api.login"], now=2)
+        assert report.severity is Severity.BLOCK
+        assert report.caller_symbol_id == "api.login"
+        assert report.message.startswith("CONFLICT: api.login (marcel) calls auth.issue (anna)")
+        # Without an explicit target, a base edge alone creates no impact.
+        assert check_contracts(store, "marcel", now=2) == []
+        assert check_contracts(store, "anna", now=2) == []
+        # Marcel's overlay of login() no longer calls issue(): the overlay replaces main.
+        sync_file(store, "marcel", "api.py", "api", "def login():\n    return 'x'\n", now=3)
+        assert check_contracts(store, "marcel", ["api.login"], now=4) == []

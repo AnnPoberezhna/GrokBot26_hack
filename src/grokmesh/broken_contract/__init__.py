@@ -7,7 +7,7 @@ import time
 from collections.abc import Iterable
 
 from grokmesh.collision import Collision, CollisionKind, Resolution, Severity
-from grokmesh.store import ChangeKind, Store
+from grokmesh.store import BASE_LAYER, ChangeKind, Store, overlay_layer
 
 
 def classify_change(before: str | None, after: str | None) -> ChangeKind:
@@ -89,8 +89,10 @@ def check_contracts(
 ) -> list[Collision]:
     """Block affected callers; warn providers about other developers' leased callers.
 
-    Only WIP call edges and active caller leases count. Explicit caller targets
-    can also be checked before acquiring their lease. Base edges are excluded.
+    WIP call edges count when the caller holds an active lease or names the caller
+    in ``symbol_ids``. A base edge counts only for ``dev_id`` when it names that
+    caller in ``symbol_ids`` and has no overlay version of it yet: the developer
+    is about to edit main's caller, and main's caller calls the changed symbol.
     """
     ts = time.time() if now is None else now
     targets = set(symbol_ids) if symbol_ids is not None else None
@@ -101,9 +103,17 @@ def check_contracts(
         if lease.change_kind is not ChangeKind.BREAKING:
             continue
         for edge in store.callers(lease.symbol_id):
-            if not edge.layer.startswith("wip:"):
+            if edge.layer.startswith("wip:"):
+                caller_dev = edge.layer.removeprefix("wip:")
+            elif (
+                edge.layer == BASE_LAYER
+                and targets is not None
+                and edge.src in targets
+                and store.get_symbol(edge.src, overlay_layer(dev_id)) is None
+            ):
+                caller_dev = dev_id
+            else:
                 continue
-            caller_dev = edge.layer.removeprefix("wip:")
             if caller_dev == lease.dev_id:
                 continue
             selected = caller_dev == dev_id and targets is not None and edge.src in targets
@@ -126,6 +136,7 @@ def check_contracts(
                 other_dev=other,
                 caller_symbol_id=edge.src,
                 message=(
+                    f"{'CONFLICT' if severity is Severity.BLOCK else 'WARNING'}: "
                     f"{edge.src} ({caller_dev}) calls {lease.symbol_id} "
                     f"({lease.dev_id}), whose contract changed.\n"
                     f"Change: {lease.sig_before} -> {lease.sig_after or '(deleted)'}"
